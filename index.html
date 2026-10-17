@@ -5,6 +5,37 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Remote Display Jadwal Sholat</title>
   
+  <!-- PWA Meta Tags & Theme -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#f59e0b">
+
+  <!-- Dynamic PWA Web Manifest with TV Digital Icon -->
+  <script>
+    const manifest = {
+      "name": "Admin Jadwal Sholat",
+      "short_name": "AdminSholat",
+      "start_url": "./",
+      "display": "standalone",
+      "background_color": "#0f172a",
+      "theme_color": "#f59e0b",
+      "icons": [
+        {
+          "src": "https://cdn-icons-png.flaticon.com/512/2972/2972531.png",
+          "sizes": "512x512",
+          "type": "image/png"
+        }
+      ]
+    };
+    const stringManifest = JSON.stringify(manifest);
+    const blob = new Blob([stringManifest], {type: 'application/json'});
+    const manifestURL = URL.createObjectURL(blob);
+    const link = document.createElement('link');
+    link.rel = 'manifest';
+    link.href = manifestURL;
+    document.head.appendChild(link);
+  </script>
+
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
@@ -31,15 +62,31 @@
     .status-dot.online { background: #10b981; box-shadow: 0 0 8px #10b981; }
     .status-dot.saving { background: #f59e0b; box-shadow: 0 0 8px #f59e0b; }
 
-    /* MODE SWITCHER CONTROL */
+    /* MODE SWITCHER CONTROL & PREVIEW */
     .mode-card { background: var(--card-bg); border: 2px solid var(--accent-color); border-radius: 12px; padding: 15px; margin-bottom: 20px; text-align: center; }
     .mode-card h3 { font-size: 1rem; color: var(--accent-color); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+    
+    /* PREVIEW REALTIME LAYAR */
+    .mode-preview-screen {
+      width: 100%; height: 110px; background: #000; border-radius: 8px; border: 2px solid var(--border-color);
+      margin-bottom: 12px; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; padding: 6px;
+    }
+    .prev-header { font-size: 0.6rem; background: rgba(255,255,255,0.9); color: #000; padding: 2px 6px; border-radius: 3px; display: flex; justify-content: space-between; font-weight: bold; }
+    .prev-body { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; color: #fbbf24; font-weight: bold; text-align: center; padding: 2px; }
+    .prev-footer { font-size: 0.55rem; background: #0f172a; color: #fff; padding: 2px; border-radius: 3px; display: flex; justify-content: space-around; }
+
     .mode-nav { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
     .btn-nav-mode { background: #334155; border: 1px solid var(--border-color); color: #fff; width: 44px; height: 44px; border-radius: 10px; font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
     .btn-nav-mode:active { background: var(--accent-color); color: #000; transform: scale(0.95); }
-    .mode-display-box { flex: 1; background: #0f172a; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); }
-    .mode-title { font-weight: 800; font-size: 1.1rem; color: #fff; }
-    .mode-desc { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+    .mode-display-box { flex: 1; background: #0f172a; padding: 8px; border-radius: 8px; border: 1px solid var(--border-color); text-align: left; }
+    .mode-title { font-weight: 800; font-size: 0.95rem; color: #fff; }
+    .mode-desc { font-size: 0.7rem; color: var(--text-muted); margin-top: 2px; }
+
+    /* TOMBOL FULLSCREEN TV */
+    .btn-fullscreen-tv {
+      background: #10b981; color: #fff; font-weight: 700; font-size: 0.9rem; padding: 10px; border: none; border-radius: 8px; cursor: pointer; width: 100%; margin-top: 12px; transition: background 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .btn-fullscreen-tv:active { background: #059669; transform: scale(0.98); }
 
     /* FORM GROUPS */
     .section-title { font-size: 0.95rem; font-weight: 700; color: var(--accent-color); margin: 20px 0 10px 0; border-left: 3px solid var(--accent-color); padding-left: 8px; }
@@ -66,9 +113,22 @@
     </div>
   </header>
 
-  <!-- CONTROL MODE DISPLAY (KANAN & KIRI) -->
+  <!-- CONTROL MODE DISPLAY & PREVIEW -->
   <div class="mode-card">
     <h3>Mode Tampilan Display</h3>
+    
+    <!-- PREVIEW REALTIME LAYAR -->
+    <div class="mode-preview-screen" id="preview-screen">
+      <div class="prev-header">
+        <span id="prev-clock">12:00</span>
+        <span id="prev-masjid-title">Masjid Al Jihad</span>
+      </div>
+      <div class="prev-body" id="prev-body-text">Banner / Utama Display</div>
+      <div class="prev-footer">
+        <span>Subuh</span><span>Dzuhur</span><span>Ashar</span><span>Maghrib</span><span>Isya</span>
+      </div>
+    </div>
+
     <div class="mode-nav">
       <button class="btn-nav-mode" id="btn-prev-mode" title="Mode Sebelumnya">&#9664;</button>
       <div class="mode-display-box">
@@ -77,6 +137,11 @@
       </div>
       <button class="btn-nav-mode" id="btn-next-mode" title="Mode Selanjutnya">&#9654;</button>
     </div>
+
+    <!-- TOMBOL FULLSCREEN UNTUK DISPLAY TV -->
+    <button class="btn-fullscreen-tv" id="btn-trigger-fs">
+      📺 Aktifkan Layar Penuh (Fullscreen) di TV
+    </button>
   </div>
 
   <form id="admin-form" onsubmit="event.preventDefault();">
@@ -196,19 +261,20 @@
     const inputs = document.querySelectorAll('input[data-field], textarea[data-field], select[data-field]');
     inputs.forEach(input => {
       const field = input.getAttribute('data-field');
-      
-      // Menggunakan 'input' untuk teks agar langsung terkirim saat diketik
       input.addEventListener('input', () => {
         autoSave(field, input.value);
+        if(field === 'masjid') {
+          document.getElementById('prev-masjid-title').textContent = input.value || 'Masjid Al Jihad';
+        }
       });
     });
 
-    // Pengaturan Mode Display (Kanan & Kiri)
+    // Pengaturan Mode Display (Kanan & Kiri) & Preview Realtime
     const modesList = [
-      { id: 'mode-main', name: 'Mode Utama', desc: 'Tampilan standar jam, banner, & footer jadwal' },
-      { id: 'mode-video', name: 'Mode Video Streaming', desc: 'Layar penuh video YouTube & popup jam' },
-      { id: 'mode-fullscreen', name: 'Mode Fullscreen Slide', desc: 'Slide gambar penuh layar & popup footer' },
-      { id: 'mode-sidebar', name: 'Mode Sidebar Schedule', desc: 'Jadwal sholat berdiri di sisi kiri & slide gambar' }
+      { id: 'mode-main', name: 'Mode Utama', desc: 'Tampilan standar jam, banner, & footer jadwal', previewText: '🖼️ Banner / Utama Display' },
+      { id: 'mode-video', name: 'Mode Video Streaming', desc: 'Layar penuh video YouTube & popup jam', previewText: '▶️ Live Stream YouTube' },
+      { id: 'mode-fullscreen', name: 'Mode Fullscreen Slide', desc: 'Slide gambar penuh layar & popup footer', previewText: '🖥️ Fullscreen Slideshow' },
+      { id: 'mode-sidebar', name: 'Mode Sidebar Schedule', desc: 'Jadwal sholat berdiri di sisi kiri & slide gambar', previewText: '📑 Sidebar Jadwal Kiri' }
     ];
     let currentModeIdx = 0;
 
@@ -216,6 +282,7 @@
       const mode = modesList[currentModeIdx];
       document.getElementById('current-mode-name').textContent = mode.name;
       document.getElementById('current-mode-desc').textContent = mode.desc;
+      document.getElementById('prev-body-text').textContent = mode.previewText;
     }
 
     document.getElementById('btn-prev-mode').addEventListener('click', () => {
@@ -230,6 +297,13 @@
       autoSave('activeModeIdx', currentModeIdx);
     });
 
+    // Tombol Fullscreen TV Jarak Jauh
+    document.getElementById('btn-trigger-fs').addEventListener('click', () => {
+      dbRef.child('triggerFullscreen').set(Date.now(), (err) => {
+        if(!err) alert('Perintah Fullscreen dikirim ke Display TV!');
+      });
+    });
+
     // Ambil Data Awal dan Sinkronisasi Masuk dari Firebase
     dbRef.on('value', (snapshot) => {
       const data = snapshot.val();
@@ -239,6 +313,9 @@
           const field = input.getAttribute('data-field');
           if (data[field] !== undefined && document.activeElement !== input) {
             input.value = data[field];
+            if(field === 'masjid') {
+              document.getElementById('prev-masjid-title').textContent = data[field] || 'Masjid Al Jihad';
+            }
           }
         });
 
@@ -256,6 +333,14 @@
         isRemoteUpdating = false;
       }
     });
+
+    // Jam Realtime di Preview Admin
+    setInterval(() => {
+      const now = new Date();
+      const h = String(now.getHours()).padStart(2, '0');
+      const m = String(now.getMinutes()).padStart(2, '0');
+      document.getElementById('prev-clock').textContent = `${h}:${m}`;
+    }, 1000);
 
     // Fitur Pencarian Kota Kemenag (MyQuran API)
     let allCities = [];
@@ -289,7 +374,6 @@
             searchInput.value = c.lokasi;
             cityIdInput.value = c.id;
             suggestionsBox.classList.remove('show');
-            // Simpan kota otomatis ke Firebase
             autoSave('cityName', c.lokasi);
             autoSave('cityId', c.id);
           });
